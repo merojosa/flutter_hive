@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -42,8 +43,8 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
-  File _archivo;
   final _picker = ImagePicker();
+  final llave = "llaveSecretito";
 
   @override
   void initState() {
@@ -58,21 +59,42 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<File> obtenerValorDesencriptado() async {
+  Future<Box<Uint8List>> _obtenerBox() async {
     await initLlave();
 
     final encryptionKey =
         base64Url.decode(await secureStorage.read(key: 'key'));
-    print('Encryption key: $encryptionKey');
 
-    final encryptedBox = await Hive.openBox<File>('vaultBox',
+    return Hive.openBox<Uint8List>('vaultBox',
         encryptionCipher: HiveAesCipher(encryptionKey));
+  }
 
-    final pickedFile = await _picker.getVideo(source: ImageSource.gallery);
-    _archivo = File(pickedFile.path);
+  void _agregarImagen() async {
+    final pickedFile = await _picker.getImage(source: ImageSource.gallery);
 
-    encryptedBox.put('secreto', _archivo);
-    return encryptedBox.get('secreto');
+    final archivo = File(pickedFile.path);
+    final bytes = await archivo.readAsBytes();
+
+    final encryptedBox = await _obtenerBox();
+    encryptedBox.put(llave, bytes);
+    setState(() {});
+  }
+
+  Future<Widget> _obtenerImagen() async {
+    final encryptedBox = await _obtenerBox();
+    final dir = await getApplicationDocumentsDirectory();
+
+    if (encryptedBox.containsKey(llave)) {
+      final bytes = encryptedBox.get(llave);
+      print("SÍ HAY IMAGEN JEJEJ");
+
+      final file = File(dir.path);
+      await file.writeAsBytes(bytes);
+
+      return Image.file(file);
+    } else {
+      return const Text("No hay imagen");
+    }
   }
 
   @override
@@ -81,15 +103,23 @@ class _MyHomePageState extends State<MyHomePage> {
         appBar: AppBar(
           title: Text(widget.title),
         ),
-        body: FutureBuilder<File>(
-          builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              return Center(child: Text(snapshot.data.path));
-            } else {
-              return const CircularProgressIndicator();
-            }
-          },
-          future: obtenerValorDesencriptado(),
+        body: Column(
+          children: [
+            RaisedButton(
+              child: const Text("Agregar imagen"),
+              onPressed: _agregarImagen,
+            ),
+            FutureBuilder<Widget>(
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  return snapshot.data;
+                } else {
+                  return const CircularProgressIndicator();
+                }
+              },
+              future: _obtenerImagen(),
+            )
+          ],
         ));
   }
 }
