@@ -43,8 +43,9 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
-  final _picker = ImagePicker();
+  final picker = ImagePicker();
   final llave = "llave";
+  final nombreBox = "archivosEncriptados";
 
   @override
   void initState() {
@@ -59,38 +60,37 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<Box<Uint8List>> _obtenerBox() async {
+  Future<Box<Uint8List>> _obtenerBoxDesencriptado() async {
     await initLlave();
 
     final encryptionKey =
         base64Url.decode(await secureStorage.read(key: 'key'));
 
-    return Hive.openBox<Uint8List>('vaultBox',
+    return Hive.openBox<Uint8List>(nombreBox,
         encryptionCipher: HiveAesCipher(encryptionKey));
   }
 
   void _agregarImagen() async {
-    final pickedFile = await _picker.getImage(source: ImageSource.gallery);
+    final pickedFile = await picker.getImage(source: ImageSource.gallery);
 
     final archivo = File(pickedFile.path);
     final bytes = await archivo.readAsBytes();
 
-    final encryptedBox = await _obtenerBox();
+    final encryptedBox = await _obtenerBoxDesencriptado();
     encryptedBox.put(llave, bytes);
+
     setState(() {});
   }
 
   Future<Widget> _obtenerImagen() async {
-    final encryptedBox = await _obtenerBox();
-    final dir = await getTemporaryDirectory();
+    final encryptedBox = await _obtenerBoxDesencriptado();
+    final dir = await getApplicationDocumentsDirectory();
 
     if (encryptedBox.containsKey(llave)) {
       final bytes = encryptedBox.get(llave);
-      print("SÍ HAY IMAGEN JEJEJ");
 
       final file = File(dir.path + "/archivo");
       await file.writeAsBytes(bytes);
-      print("Prueba");
 
       return Image.file(file);
     } else {
