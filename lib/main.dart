@@ -38,41 +38,49 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
+
   @override
   void initState() {
     super.initState();
-
-    init();
   }
 
-  void init() async {
-    final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
-
+  Future<void> initLlave() async {
     final containsEncryptionKey = await secureStorage.containsKey(key: 'key');
     if (!containsEncryptionKey) {
       var key = Hive.generateSecureKey();
       await secureStorage.write(key: 'key', value: base64UrlEncode(key));
     }
+  }
+
+  Future<String> obtenerValorDesencriptado() async {
+    await initLlave();
 
     final encryptionKey =
         base64Url.decode(await secureStorage.read(key: 'key'));
     print('Encryption key: $encryptionKey');
 
-    final encryptedBox = await Hive.openBox('vaultBox',
+    final encryptedBox = await Hive.openBox<String>('vaultBox',
         encryptionCipher: HiveAesCipher(encryptionKey));
     encryptedBox.put('secret', 'Hive is cool');
-    print(encryptedBox.get('secret'));
+    return encryptedBox.get('secret');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Text("Prueba"),
-      ),
-    );
+        appBar: AppBar(
+          title: Text(widget.title),
+        ),
+        body: FutureBuilder<String>(
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              return Center(child: Text(snapshot.data));
+            } else {
+              return const CircularProgressIndicator();
+            }
+          },
+          future: obtenerValorDesencriptado(),
+        ));
   }
 }
