@@ -44,7 +44,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
   final _picker = ImagePicker();
-  final llave = "llaveSecretito";
+  final llave = "llave";
 
   @override
   void initState() {
@@ -82,14 +82,15 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<Widget> _obtenerImagen() async {
     final encryptedBox = await _obtenerBox();
-    final dir = await getApplicationDocumentsDirectory();
+    final dir = await getTemporaryDirectory();
 
     if (encryptedBox.containsKey(llave)) {
       final bytes = encryptedBox.get(llave);
       print("SÍ HAY IMAGEN JEJEJ");
 
-      final file = File(dir.path);
+      final file = File(dir.path + "/archivo");
       await file.writeAsBytes(bytes);
+      print("Prueba");
 
       return Image.file(file);
     } else {
