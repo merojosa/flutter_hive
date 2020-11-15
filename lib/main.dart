@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive/hive.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 Future<void> main() async {
@@ -40,6 +42,9 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
+  File _archivo;
+  final _picker = ImagePicker();
+
   @override
   void initState() {
     super.initState();
@@ -53,17 +58,21 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<String> obtenerValorDesencriptado() async {
+  Future<File> obtenerValorDesencriptado() async {
     await initLlave();
 
     final encryptionKey =
         base64Url.decode(await secureStorage.read(key: 'key'));
     print('Encryption key: $encryptionKey');
 
-    final encryptedBox = await Hive.openBox<String>('vaultBox',
+    final encryptedBox = await Hive.openBox<File>('vaultBox',
         encryptionCipher: HiveAesCipher(encryptionKey));
-    encryptedBox.put('secret', 'Hive is cool');
-    return encryptedBox.get('secret');
+
+    final pickedFile = await _picker.getVideo(source: ImageSource.gallery);
+    _archivo = File(pickedFile.path);
+
+    encryptedBox.put('secreto', _archivo);
+    return encryptedBox.get('secreto');
   }
 
   @override
@@ -72,10 +81,10 @@ class _MyHomePageState extends State<MyHomePage> {
         appBar: AppBar(
           title: Text(widget.title),
         ),
-        body: FutureBuilder<String>(
+        body: FutureBuilder<File>(
           builder: (context, snapshot) {
             if (snapshot.hasData) {
-              return Center(child: Text(snapshot.data));
+              return Center(child: Text(snapshot.data.path));
             } else {
               return const CircularProgressIndicator();
             }
